@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Midpoint</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --bg: #fff;
+      --panel: #fafafa;
+      --fg: #18181b;
+      --mut: #71717a;
+      --line: #e4e4e7;
+      --acc: #2563eb;
+      --mid: #e11d48;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #09090b;
+        --panel: #111113;
+        --fg: #f4f4f5;
+        --mut: #a1a1aa;
+        --line: #27272a;
+        --acc: #60a5fa;
+        --mid: #fb7185;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: flex;
+      font: 14px/1.4 system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+
+    aside {
+      width: 320px;
+      padding: 20px;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: auto;
+    }
+
+    h1 {
+      font-size: 16px;
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: -.01em;
+    }
+
+    p.hint {
+      margin: 0;
+      color: var(--mut);
+      font-size: 12.5px;
+    }
+
+    input[type=text] {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      outline: none;
+    }
+
+    input[type=text]:focus {
+      border-color: var(--acc);
+    }
+
+    .seg {
+      display: flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .seg button {
+      flex: 1;
+      padding: 7px;
+      border: 0;
+      background: var(--bg);
+      color: var(--mut);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .seg button.on {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+    }
+
+    li .n {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--acc);
+      color: #fff;
+      font-size: 11px;
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+
+    li .t {
+      flex: 1;
+      min-width: 0;
+    }
+
+    li .t b {
+      display: block;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    li .t span {
+      color: var(--mut);
+      font-size: 12px;
+    }
+
+    li button {
+      border: 0;
+      background: none;
+      color: var(--mut);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 2px;
+    }
+
+    li button:hover {
+      color: var(--mid);
+    }
+
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--bg);
+    }
+
+    .result .k {
+      color: var(--mut);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .result .v {
+      font-family: ui-monospace, monospace;
+      font-size: 15px;
+      margin: 2px 0 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 7px;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: none;
+      color: var(--fg);
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .btn:hover {
+      border-color: var(--acc);
+      color: var(--acc);
+    }
+
+    .search {
+      position: relative;
+    }
+
+    #sugg {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      z-index: 2000;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      max-height: 280px;
+      overflow: auto;
+      gap: 0;
+      box-shadow: 0 6px 20px #0003;
+    }
+
+    #sugg li {
+      display: block;
+      border: 0;
+      border-radius: 0;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      padding: 8px 10px;
+    }
+
+    #sugg li:last-child {
+      border-bottom: 0;
+    }
+
+    #sugg li:hover {
+      background: var(--panel);
+    }
+
+    #sugg li b {
+      display: block;
+      font-weight: 500;
+    }
+
+    #sugg li span {
+      color: var(--mut);
+      font-size: 12px;
+    }
+
+    #sugg li.msg {
+      color: var(--mut);
+      cursor: default;
+    }
+
+    #map {
+      flex: 1;
+    }
+
+    .pin {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--acc);
+      color: #fff;
+      font: 600 11px system-ui;
+      display: grid;
+      place-items: center;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px #0005;
+    }
+
+    .midpin {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--mid);
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--mid) 30%, transparent);
+    }
+
+    .dist {
+      background: var(--bg);
+      color: var(--fg);
+      border: 1px solid var(--line);
+      font-size: 11px;
+      padding: 1px 5px;
+      box-shadow: none;
+    }
+
+    @media (max-width:720px) {
+      body {
+        flex-direction: column-reverse;
+      }
+
+      aside {
+        width: 100%;
+        max-height: 48%;
+        border-right: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <aside>
+    <h1>Midpoint</h1>
+    <p class="hint">Click the map or search a place to add locations. Drag pins to adjust.</p>
+    <div class="search"><input id="q" type="text" placeholder="Search a place" autocomplete="off">
+      <ul id="sugg" hidden></ul>
+    </div>
+    <div class="seg" id="mode">
+      <button data-m="center" class="on">Midpoint</button>
+      <button data-m="median">Least travel</button>
+    </div>
+    <p class="hint" id="modeHint"></p>
+    <ul id="list"></ul>
+    <div class="result" id="res" hidden>
+      <div class="k" id="rk">Midpoint</div>
+      <div class="v" id="coord"></div>
+      <div class="k">Avg. distance to points</div>
+      <div class="v" id="avg"></div>
+      <div class="row">
+        <button class="btn" id="copy">Copy</button>
+        <a class="btn" id="gmap" target="_blank" rel="noopener">Open in Maps</a>
+      </div>
+    </div>
+    <button class="btn" id="clear" style="flex:none" hidden>Clear all</button>
+  </aside>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+    const $ = id => document.getElementById(id);
+    const rad = d => d * Math.PI / 180, deg = r => r * 180 / Math.PI;
+    const HINTS = { center: 'Geographic center of all locations.', median: 'Spot with the smallest total distance to everyone.' };
+    let pts = [], mode = 'center', midMarker = null, lines = [];
+
+    // --- geometry (unit-sphere vectors) ---
+    const toV = p => { const a = rad(p.lat), b = rad(p.lng); return [Math.cos(a) * Math.cos(b), Math.cos(a) * Math.sin(b), Math.sin(a)]; };
+    const toLL = v => { const n = Math.hypot(...v) || 1; return { lat: deg(Math.asin(v[2] / n)), lng: deg(Math.atan2(v[1], v[0])) }; };
+    function km(a, b) {
+      const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+      return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+    function center(ps) {
+      const s = [0, 0, 0];
+      ps.forEach(p => toV(p).forEach((x, i) => s[i] += x));
+      return toLL(s);
+    }
+    function median(ps) { // Weiszfeld iteration on the sphere
+      let m = center(ps);
+      for (let i = 0; i < 100; i++) {
+        const s = [0, 0, 0];
+        for (const p of ps) {
+          const w = 1 / Math.max(km(m, p), 1e-6);
+          toV(p).forEach((x, j) => s[j] += x * w);
+        }
+        m = toLL(s);
+      }
+      return m;
+    }
+
+    // --- rendering ---
+    const pinIcon = n => L.divIcon({ className: '', html: `<div class="pin">${n}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
+    const midIcon = L.divIcon({ className: '', html: '<div class="midpin"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+
+    function addPoint(lat, lng, name) {
+      const p = { lat, lng, name: name || `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+      p.marker = L.marker([lat, lng], { icon: pinIcon(pts.length + 1), draggable: true }).addTo(map);
+      p.marker.on('drag', () => { const ll = p.marker.getLatLng(); p.lat = ll.lat; p.lng = ll.lng; p.name = `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`; render(false); });
+      pts.push(p);
+      render(true);
+    }
+
+    function render(fit) {
+      $('list').innerHTML = '';
+      pts.forEach((p, i) => {
+        p.marker.setIcon(pinIcon(i + 1));
+        const li = document.createElement('li');
+        li.innerHTML = `<div class="n">${i + 1}</div><div class="t"><b></b><span>${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span></div><button title="Remove">&times;</button>`;
+        li.querySelector('b').textContent = p.name;
+        li.querySelector('button').onclick = () => { map.removeLayer(p.marker); pts.splice(i, 1); render(true); };
+        li.querySelector('.t').onclick = () => map.panTo([p.lat, p.lng]);
+        $('list').appendChild(li);
+      });
+
+      lines.forEach(l => map.removeLayer(l)); lines = [];
+      if (midMarker) { map.removeLayer(midMarker); midMarker = null; }
+      $('res').hidden = $('clear').hidden = pts.length === 0;
+      if (!pts.length) return;
+      if (pts.length === 1) { if (fit) map.setView([pts[0].lat, pts[0].lng], Math.max(map.getZoom(), 6)); $('res').hidden = true; return; }
+
+      const m = mode === 'center' ? center(pts) : median(pts);
+      midMarker = L.marker([m.lat, m.lng], { icon: midIcon, zIndexOffset: 1000 }).addTo(map);
+      let total = 0;
+      const css = getComputedStyle(document.documentElement);
+      pts.forEach(p => {
+        const d = km(m, p); total += d;
+        const ln = L.polyline([[p.lat, p.lng], [m.lat, m.lng]], { color: css.getPropertyValue('--mid').trim(), weight: 2, dashArray: '6 6', opacity: .8 }).addTo(map);
+        ln.bindTooltip(`${d.toFixed(d < 100 ? 1 : 0)} km`, { permanent: true, direction: 'center', className: 'dist' });
+        lines.push(ln);
+      });
+      const txt = `${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}`;
+      $('rk').textContent = mode === 'center' ? 'Midpoint' : 'Least-travel point';
+      $('coord').textContent = txt;
+      $('avg').textContent = `${(total / pts.length).toFixed(1)} km  (total ${total.toFixed(0)} km)`;
+      $('gmap').href = `https://www.google.com/maps?q=${m.lat},${m.lng}`;
+      $('copy').onclick = () => { navigator.clipboard.writeText(txt); $('copy').textContent = 'Copied'; setTimeout(() => $('copy').textContent = 'Copy', 1200); };
+      if (fit) map.fitBounds(L.latLngBounds([...pts.map(p => [p.lat, p.lng]), [m.lat, m.lng]]), { padding: [60, 60], maxZoom: 12 });
+    }
+
+    // --- interaction ---
+    map.on('click', e => addPoint(e.latlng.lat, e.latlng.lng));
+    $('clear').onclick = () => { pts.forEach(p => map.removeLayer(p.marker)); pts = []; render(false); };
+    $('mode').onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      mode = b.dataset.m;
+      [...$('mode').children].forEach(x => x.classList.toggle('on', x === b));
+      $('modeHint').textContent = HINTS[mode];
+      render(false);
+    };
+    $('modeHint').textContent = HINTS[mode];
+    // --- search: show results, user picks one ---
+    const sugg = $('sugg');
+    let timer, seq = 0;
+    const geocoders = [
+      async q => { // Photon (no key, CORS enabled)
+        const r = await (await fetch(`https://photon.komoot.io/api/?limit=6&q=${q}`)).json();
+        return (r.features || []).map(f => {
+          const p = f.properties, [lng, lat] = f.geometry.coordinates;
+          return { lat, lng, name: p.name || p.street || 'Unnamed', sub: [p.city || p.county, p.state, p.country].filter(Boolean).join(', ') };
+        });
+      },
+      async q => { // fallback: Nominatim
+        const r = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${q}`)).json();
+        return r.map(x => { const t = x.display_name.split(', '); return { lat: +x.lat, lng: +x.lon, name: t[0], sub: t.slice(1, 4).join(', ') }; });
+      }
+    ];
+    function showMsg(t) { sugg.innerHTML = `<li class="msg">${t}</li>`; sugg.hidden = false; }
+    async function search() {
+      const text = $('q').value.trim();
+      if (text.length < 3) { sugg.hidden = true; return; }
+      const my = ++seq, q = encodeURIComponent(text);
+      showMsg('Searching…');
+      let res = [], failed = 0;
+      for (const g of geocoders) {
+        try { res = await g(q); if (res.length) break; } catch (err) { failed++; console.warn('geocoder failed', err); }
+      }
+      if (my !== seq) return; // a newer search superseded this one
+      if (!res.length) return showMsg(failed === geocoders.length ? 'Search failed, check console' : 'No results');
+      sugg.innerHTML = '';
+      res.forEach(r => {
+        const li = document.createElement('li');
+        li.innerHTML = '<b></b><span></span>';
+        li.firstChild.textContent = r.name; li.lastChild.textContent = r.sub;
+        li.onclick = () => { addPoint(r.lat, r.lng, r.sub ? `${r.name}, ${r.sub.split(', ')[0]}` : r.name); $('q').value = ''; sugg.hidden = true; };
+        sugg.appendChild(li);
+      });
+    }
+    $('q').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 450); });
+    $('q').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { clearTimeout(timer); search(); }
+      if (e.key === 'Escape') sugg.hidden = true;
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('.search')) sugg.hidden = true; });
+  </script>
+</body>
+
+</html>
